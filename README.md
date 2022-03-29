@@ -1,0 +1,1 @@
+This is a utility for UART communication with "Motor PWM HL200200 v1.05" controller.
