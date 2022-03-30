@@ -109,6 +109,8 @@ def writeRegister(writeCommand, payload):
     # Format the data bytes
     data0 = (payload >> 7) & 0x7F
     data1 = payload & 0x7F
+    # CRC should be (writeCommand + data0 + data1) & 0x7F
+    expectedCrc = (writeCommand.value + data0 + data1) & 0x7F
     # TODO: calculate the CRC and append to payload
     with serial.Serial() as ser:
         ser.baudrate = serialBaudRate
@@ -118,11 +120,10 @@ def writeRegister(writeCommand, payload):
         ser.write(writeCommand.value)
         ser.write(data0)
         ser.write(data1)
+        ser.write(expectedCrc)
         # Response should be 1 byte
         response = ser.read(1)
         # Check CRC
-        # CRC should be (writeCommand + data0 + data1) & 0x7F
-        expectedCrc = (writeCommand.value + data0 + data1) & 0x7F
         if (response != expectedCrc):
             raise Exception("CRC failed. Expected {} but got {}".format(hex(expectedCrc), hex(response)))
             return
