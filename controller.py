@@ -1,99 +1,126 @@
 #!/usr/bin/env python
 
+from enum import Enum
 import serial
 
 # Address = UNIT_ADDRESS | 0x80
 # By default the address is 0x00
-address = bytearray.fromhex("80")
+address =           0x00 | 0x80
+
+minPayloadValue =   0x0000
+maxPayloadValue =   0x0FFF
+
+serialBaudRate =    19200
+serialPort =        '/dev/ttyS0'
 
 # Lookup class for read register commands
-class ReadCommand(bytearray):
-    SPEEDMOTOR1 = bytearray.fromhex("00")
-    CURRENTLIMIT = bytearray.fromhex("02")
-    REGENLIMIT = bytearray.fromhex("03")
-    ACCELLIMIT = bytearray.fromhex("04")
-    DECELLIMIT = bytearray.fromhex("05")
-    TURNOFFLOW = bytearray.fromhex("06")
-    TURNONLOW = bytearray.fromhex("07")
-    TURNONHIGH = bytearray.fromhex("08")
-    TURNOFFHIGH = bytearray.fromhex("09")
-    HEATSINKTEMPERATURE = bytearray.fromhex("0A")
-    MAINBOARDTEMPERATURE = bytearray.fromhex("0B")
-    UNUSED1 = bytearray.fromhex("0F")
-    SUPPLYVOLTAGE = bytearray.fromhex("10")
-    SPEEDADCINPUT = bytearray.fromhex("11")
-    LOADCURRENT1 = bytearray.fromhex("12")
-    INPUTFREQUENCYPERIODREGISTER = bytearray.fromhex("14")
-    INPUTPULSEWIDTH = bytearray.fromhex("15")
-    UNUSED2 = bytearray.fromhex("19")
-    IRCOMPENSATIONGAIN = bytearray.fromhex("20")
-    TOPSPEED = bytearray.fromhex("21")
-    POTENTIOMETERMIN = bytearray.fromhex("22")
-    POTENTIOMETERMAX = bytearray.fromhex("23")
-    UNUSED3 = bytearray.fromhex("24")
-    STATUSREGISTER = bytearray.fromhex("30")
-    LOCKLEVEL2VARIABLES = bytearray.fromhex("31")
-    SAVEBYTES1 = bytearray.fromhex("32")
-    SAVEBYTES2 = bytearray.fromhex("33")
-    CONFIGURATIONBITS1 = bytearray.fromhex("34")
-    CONFIGURATIONBITS2 = bytearray.fromhex("35")
-    SOFTWAREVERSION = bytearray.fromhex("3E")
-    HARDWAREVERSION = bytearray.fromhex("3F")
+class ReadCommand(Enum):
+    SPEEDMOTOR1 =                   0x00
+    CURRENTLIMIT =                  0x02
+    REGENLIMIT =                    0x03
+    ACCELLIMIT =                    0x04
+    DECELLIMIT =                    0x05
+    TURNOFFLOW =                    0x06
+    TURNONLOW =                     0x07
+    TURNONHIGH =                    0x08
+    TURNOFFHIGH =                   0x09
+    HEATSINKTEMPERATURE =           0x0A
+    MAINBOARDTEMPERATURE =          0x0B
+    UNUSED1 =                       0x0F
+    SUPPLYVOLTAGE =                 0x10
+    SPEEDADCINPUT =                 0x11
+    LOADCURRENT1 =                  0x12
+    INPUTFREQUENCYPERIODREGISTER =  0x14
+    INPUTPULSEWIDTH =               0x15
+    UNUSED2 =                       0x19
+    IRCOMPENSATIONGAIN =            0x20
+    TOPSPEED =                      0x21
+    POTENTIOMETERMIN =              0x22
+    POTENTIOMETERMAX =              0x23
+    UNUSED3 =                       0x24
+    STATUSREGISTER =                0x30
+    LOCKLEVEL2VARIABLES =           0x31
+    SAVEBYTES1 =                    0x32
+    SAVEBYTES2 =                    0x33
+    CONFIGURATIONBITS1 =            0x34
+    CONFIGURATIONBITS2 =            0x35
+    SOFTWAREVERSION =               0x3E
+    HARDWAREVERSION =               0x3F
 
 # Lookup class for write registers    
-class WriteCommand(bytearray):
-    SPEEDMOTOR1 = bytearray.fromhex("40")
-    CURRENTLIMIT = bytearray.fromhex("42")
-    REGENLIMIT = bytearray.fromhex("43")
-    ACCELLIMIT = bytearray.fromhex("44")
-    DECELLIMIT = bytearray.fromhex("45")
-    TURNOFFLOW = bytearray.fromhex("46")
-    TURNONLOW = bytearray.fromhex("47")
-    TURNONHIGH = bytearray.fromhex("48")
-    TURNOFFHIGH = bytearray.fromhex("49")
-    IRCOMPENSATIONGAIN = bytearray.fromhex("60")
-    TOPSPEED = bytearray.fromhex("61")
-    POTENTIOMETERMIN = bytearray.fromhex("62")
-    POTENTIOMETERMAX = bytearray.fromhex("63")
-    LOCKLEVEL2VARIABLES = bytearray.fromhex("71")
-    SAVEBYTES1 = bytearray.fromhex("72")
-    SAVEBYTES2 = bytearray.fromhex("73")
-    CONFIGURATIONBITS1 = bytearray.fromhex("74")
-    CONFIGURATIONBITS2 = bytearray.fromhex("75")
-    UARTADDRESS = bytearray.fromhex("7C")
-    CURRENTMEASUREMENTCALIBRATION = bytearray.fromhex("7D")
+class WriteCommand(Enum):
+    SPEEDMOTOR1 =                   0x40
+    CURRENTLIMIT =                  0x42
+    REGENLIMIT =                    0x43
+    ACCELLIMIT =                    0x44
+    DECELLIMIT =                    0x45
+    TURNOFFLOW =                    0x46
+    TURNONLOW =                     0x47
+    TURNONHIGH =                    0x48
+    TURNOFFHIGH =                   0x49
+    IRCOMPENSATIONGAIN =            0x60
+    TOPSPEED =                      0x61
+    POTENTIOMETERMIN =              0x62
+    POTENTIOMETERMAX =              0x63
+    LOCKLEVEL2VARIABLES =           0x71
+    SAVEBYTES1 =                    0x72
+    SAVEBYTES2 =                    0x73
+    CONFIGURATIONBITS1 =            0x74
+    CONFIGURATIONBITS2 =            0x75
+    UARTADDRESS =                   0x7C
+    CURRENTMEASUREMENTCALIBRATION = 0x7D
 
 # Read the specified register
 def readRegister(readCommand):
     with serial.Serial() as ser:
-        ser.baudrate = 19200
-        ser.port = '/dev/ttyS0'
+        ser.baudrate = serialBaudRate
+        ser.port = serialPort
         ser.open()
         ser.write(address)
-        ser.write(readCommand)
-        # response should be 3 bytes
+        ser.write(readCommand.value)
+        # Response should be 3 bytes
         response = ser.read(3)
-        # TODO: check CRC
-        # CRC should be ((Read command byte + 1th DATA byte + 2th DATA byte) & 0x7F)
-        print(bytearray.hex(response))
+        # Check CRC
+        # CRC should be (readCommand + first data byte + second data byte) & 0x7F
+        crc = response[2]
+        expectedCrc = (readCommand.value + response[0] + response[1]) & 0x7F
+        if crc != expectedCrc:
+            raise Exception("CRC failed. Expected {} but got {}".format(hex(expectedCrc), hex(crc)))
+            return
+        # Data = first byte << 7 | second byte & 0x7F
+        data = response[0] << 7 | response[1] & 0x7F
+        print("Read OK: {} ({}) = {}".format(readCommand.name, hex(readCommand.value), hex(data)))
+        return data
 
-# Write the payload to the specified register
+# Write the payload to the specified register.
 def writeRegister(writeCommand, payload):
-    if len(payload) != 2:
-        raise Exception("Payload must be exactly 2 bytes")    
+    # Check that payload is within the min and max bounds
+    if payload < minPayloadValue or payload > maxPayloadValue:
+        raise Exception("Payload must be between {} and {} (inclusive)".format(hex(minPayloadValue), hex(maxPayloadValue)))
+        return
+    # Format the data bytes
+    data0 = (payload >> 7) & 0x7F
+    data1 = payload & 0x7F
     # TODO: calculate the CRC and append to payload
     with serial.Serial() as ser:
-        ser.baudrate = 19200
-        ser.port = '/dev/ttyS0'
+        ser.baudrate = serialBaudRate
+        ser.port = serialPort
         ser.open()
         ser.write(address)
-        ser.write(writeCommand)
-        ser.write(payload)
+        ser.write(writeCommand.value)
+        ser.write(data0)
+        ser.write(data1)
+        # Response should be 1 byte
         response = ser.read(1)
-        # TODO: check CRC
-        # CRC should be ((Write command byte + 1th DATA byte + 2th DATA byte) & 0x7F)
-        print(bytearray.hex(response))
+        # Check CRC
+        # CRC should be (writeCommand + data0 + data1) & 0x7F
+        expectedCrc = (writeCommand.value + data0 + data1) & 0x7F
+        if (response != expectedCrc):
+            raise Exception("CRC failed. Expected {} but got {}".format(hex(expectedCrc), hex(response)))
+            return
+    print("Write OK: {} ({}) set to {}".format(writeCommand.name, hex(writeCommand.value), hex(value)))
+    return
 
 if __name__ == '__main__':
-    readRegister(ReadCommand.SPEEDMOTOR1)
-    #writeRegister(writeCommand.CURRENTLIMIT, bytearray([0,4]))
+    #readRegister(ReadCommand.SPEEDMOTOR1)
+    writeRegister(WriteCommand.CURRENTLIMIT, 0xFF)
