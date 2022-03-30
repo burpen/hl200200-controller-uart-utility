@@ -1,5 +1,5 @@
 # Overview
-This is a utility for UART communication with "Motor PWM HL200200 v1.05" controller.
+This is a utility for UART communication with the Power Solutions "Motor PWM HL200200 v1.05" controller.
 
 ## Example usage
     readRegister(ReadCommand.SPEEDMOTOR1)
