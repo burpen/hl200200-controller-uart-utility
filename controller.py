@@ -72,6 +72,10 @@ class WriteCommand(Enum):
 
 # Read the specified register
 def readRegister(readCommand):
+    # Check that we have a valid read command
+    if readCommand.value not in ReadCommand._value2member_map_:
+        raise Exception("ReadCommand {} is not recognized".format(hex(readCommand.value)))
+        return
     with serial.Serial() as ser:
         ser.baudrate = serialBaudRate
         ser.port = serialPort
@@ -94,6 +98,10 @@ def readRegister(readCommand):
 
 # Write the payload to the specified register.
 def writeRegister(writeCommand, payload):
+    # Check that we have a valid write command
+    if writeCommand.value not in WriteCommand._value2member_map_:
+        raise Exception("WriteCommand {} is not recognized".format(hex(writeCommand.value)))
+        return
     # Check that payload is within the min and max bounds
     if payload < minPayloadValue or payload > maxPayloadValue:
         raise Exception("Payload must be between {} and {} (inclusive)".format(hex(minPayloadValue), hex(maxPayloadValue)))
@@ -120,7 +128,3 @@ def writeRegister(writeCommand, payload):
             return
     print("Write OK: {} ({}) set to {}".format(writeCommand.name, hex(writeCommand.value), hex(value)))
     return
-
-if __name__ == '__main__':
-    #readRegister(ReadCommand.SPEEDMOTOR1)
-    writeRegister(WriteCommand.CURRENTLIMIT, 0xFF)
