@@ -12,6 +12,7 @@ maxPayloadValue =   0x0FFF
 
 serialBaudRate =    19200
 serialPort =        '/dev/ttyS0'
+serialTimeout =     5
 
 # Lookup class for read register commands
 class ReadCommand(Enum):
@@ -77,23 +78,37 @@ def readRegister(readCommand):
         raise Exception("ReadCommand {} is not recognized".format(hex(readCommand.value)))
         return
     with serial.Serial() as ser:
+        if __debug__:
+            print("Connecting to {} at {} baud, {} second timeout...".format(serialPort, serialBaudRate, serialTimeout))
         ser.baudrate = serialBaudRate
         ser.port = serialPort
+        ser.timeout = serialTimeout
         ser.open()
+        if __debug__:
+            print("Writing bytes {} {}...".format(hex(address), hex(readCommand.value)))
         ser.write(address)
         ser.write(readCommand.value)
         # Response should be 3 bytes
-        response = ser.read(3)
+        expectedResponseLength = 3
+        response = ser.read(expectedResponseLength)
+        if __debug__:
+            print("Received {} bytes in response: {}".format(len(response), response))
+        if (len(response) != expectedResponseLength):
+            raise Exception("Response was {} bytes. Expected {} bytes.".format(len(response), expectedResponseLength))
+            ser.close()
+            return
         # Check CRC
         # CRC should be (readCommand + first data byte + second data byte) & 0x7F
         crc = response[2]
         expectedCrc = (readCommand.value + response[0] + response[1]) & 0x7F
         if crc != expectedCrc:
             raise Exception("CRC failed. Expected {} but got {}".format(hex(expectedCrc), hex(crc)))
+            ser.close()
             return
         # Data = first byte << 7 | second byte & 0x7F
         data = response[0] << 7 | response[1] & 0x7F
         print("Read OK: {} ({}) = {}".format(readCommand.name, hex(readCommand.value), hex(data)))
+        ser.close()
         return data
 
 # Write the payload to the specified register.
@@ -113,19 +128,33 @@ def writeRegister(writeCommand, payload):
     expectedCrc = (writeCommand.value + data0 + data1) & 0x7F
     # TODO: calculate the CRC and append to payload
     with serial.Serial() as ser:
+        if __debug__:
+            print("Connecting to {} at {} baud, {} second timeout...".format(serialPort, serialBaudRate, serialTimeout))
         ser.baudrate = serialBaudRate
         ser.port = serialPort
+        ser.timeout = serialTimeout
         ser.open()
+        if __debug__:
+            print("Writing bytes {} {} {} {} {}...".format(hex(address), hex(writeCommand.value), hex(data0), hex(data1), hex(expectedCrc)))
         ser.write(address)
         ser.write(writeCommand.value)
         ser.write(data0)
         ser.write(data1)
         ser.write(expectedCrc)
         # Response should be 1 byte
-        response = ser.read(1)
+        expectedResponseLength = 1
+        response = ser.read(expectedResponseLength)
+        if __debug__:
+            print("Received {} bytes in response: {}".format(len(response), response))
+        if (len(response) != expectedResponseLength):
+            raise Exception("Response was {} bytes. Expected {} bytes.".format(len(response), expectedResponseLength))
+            ser.close()
+            return
         # Check CRC
         if (response != expectedCrc):
-            raise Exception("CRC failed. Expected {} but got {}".format(hex(expectedCrc), hex(response)))
+            raise Exception("CRC failed. Expected {} but got {}".format(hex(expectedCrc), response))
+            ser.close()
             return
     print("Write OK: {} ({}) set to {}".format(writeCommand.name, hex(writeCommand.value), hex(value)))
+    ser.close()
     return
