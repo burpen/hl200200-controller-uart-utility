@@ -2,17 +2,23 @@
 
 from enum import Enum
 import serial
+import configparser
 
-# Address = UNIT_ADDRESS | 0x80
-# By default the address is 0x00
-address =           0x00 | 0x80
-
+# Based on controller documentation, these are the hard min/max bounds for data
 minPayloadValue =   0x0000
 maxPayloadValue =   0x0FFF
 
-serialBaudRate =    19200
-serialPort =        '/dev/ttyS0'
-serialTimeout =     5
+# Open config file
+config = configparser.ConfigParser()
+config.read('config.ini')
+
+# Read serial settings from config file
+serialBaudRate =    int(config['Serial']['BaudRate'])
+serialPort =        config['Serial']['Port']
+serialTimeout =     int(config['Serial']['Timeout'])
+
+# Read UART address from config file
+address =           int(config['UART']['Address'], 16)
 
 # Lookup class for read register commands
 class ReadCommand(Enum):
@@ -86,8 +92,9 @@ def readRegister(readCommand):
         ser.open()
         if __debug__:
             print("Writing bytes {} {}...".format(hex(address), hex(readCommand.value)))
-        ser.write(address)
-        ser.write(readCommand.value)
+        # write() accepts bytes or bytearray type, so convert ints to bytes
+        ser.write(address.to_bytes(1, byteorder='big'))
+        ser.write(readCommand.value.to_bytes(1, byteorder='big'))
         # Response should be 3 bytes
         expectedResponseLength = 3
         response = ser.read(expectedResponseLength)
@@ -136,11 +143,12 @@ def writeRegister(writeCommand, payload):
         ser.open()
         if __debug__:
             print("Writing bytes {} {} {} {} {}...".format(hex(address), hex(writeCommand.value), hex(data0), hex(data1), hex(expectedCrc)))
-        ser.write(address)
-        ser.write(writeCommand.value)
-        ser.write(data0)
-        ser.write(data1)
-        ser.write(expectedCrc)
+        # write() accepts bytes or bytearray type, so convert ints to bytes
+        ser.write(address.to_bytes(1, byteorder='big'))
+        ser.write(writeCommand.value.to_bytes(1, byteorder='big'))
+        ser.write(data0.to_bytes(1, byteorder='big'))
+        ser.write(data1.to_bytes(1, byteorder='big'))
+        ser.write(expectedCrc.to_bytes(1, byteorder='big'))
         # Response should be 1 byte
         expectedResponseLength = 1
         response = ser.read(expectedResponseLength)
