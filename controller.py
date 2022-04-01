@@ -8,6 +8,9 @@ import configparser
 minPayloadValue =   0x0000
 maxPayloadValue =   0x0FFF
 
+# Name of data file for batch read/write operations
+dataFileName = "data.txt"
+
 # Open config file
 config = configparser.ConfigParser()
 config.read('config.ini')
@@ -54,7 +57,7 @@ class ReadCommand(Enum):
     SOFTWAREVERSION =               0x3E
     HARDWAREVERSION =               0x3F
 
-# Lookup class for write registers    
+# Lookup class for write register commands    
 class WriteCommand(Enum):
     SPEEDMOTOR1 =                   0x40
     CURRENTLIMIT =                  0x42
@@ -166,3 +169,40 @@ def writeRegister(writeCommand, payload):
     print("Write OK: {} ({}) set to {}".format(writeCommand.name, hex(writeCommand.value), hex(value)))
     ser.close()
     return
+
+# Read all registers and store results in an output file.
+def readAllValues():
+    with open(dataFileName,"w") as dataFile:
+        for register in ReadCommand:
+            print("Reading {}...".format(register))
+            try:
+                result = readRegister(register)
+                print("Read {} OK".format(register))
+                dataFile.write("{}:{}\n".format(register.name, result))
+            except Exception as e:
+                print("Failed to read {}. Caught {}".format(register, e))
+                continue
+
+def writeAllValues():
+    with open(dataFileName,"r") as dataFile:
+        lines = dataFile.readlines()
+        for line in lines:
+            try:
+                lineKeyValuePair = line.split(":")
+                register = WriteCommand[lineKeyValuePair[0]]
+                value = int(lineKeyValuePair[1])
+                print("Writing {}={}...".format(register, hex(value)))
+                try:
+                    writeRegister(register, value)
+                    print("Write {}={} OK".format(register, hex(value)))
+                except Exception as e:
+                    print("Failed to write {}={}. Caught {}".format(register, hex(value), e))
+                    continue
+            except KeyError:
+                # Ignore this line since the register is not writeable
+                if __debug__:
+                    print("Ignoring {} since it is not writeable.".format(lineKeyValuePair[0]))
+                continue
+            except Exception as e:
+                print("Failed to parse '{}'. Caught {}".format(line, e))
+                continue
