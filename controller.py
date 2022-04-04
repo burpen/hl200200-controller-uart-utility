@@ -86,13 +86,9 @@ def readRegister(readCommand):
     if readCommand.value not in ReadCommand._value2member_map_:
         raise Exception("ReadCommand {} is not recognized".format(hex(readCommand.value)))
         return
-    with serial.Serial() as ser:
-        if __debug__:
-            print("Connecting to {} at {} baud, {} second timeout...".format(serialPort, serialBaudRate, serialTimeout))
-        ser.baudrate = serialBaudRate
-        ser.port = serialPort
-        ser.timeout = serialTimeout
-        ser.open()
+    if __debug__:
+        print("Connecting to {} at {} baud, {} second timeout...".format(serialPort, serialBaudRate, serialTimeout))
+    with serial.Serial(serialPort, serialBaudRate, serialTimeout) as ser:
         if __debug__:
             print("Writing bytes {} {}...".format(hex(address), hex(readCommand.value)))
         # write() accepts bytes or bytearray type, so convert ints to bytes
@@ -136,14 +132,9 @@ def writeRegister(writeCommand, payload):
     data1 = payload & 0x7F
     # CRC should be (writeCommand + data0 + data1) & 0x7F
     expectedCrc = (writeCommand.value + data0 + data1) & 0x7F
-    # TODO: calculate the CRC and append to payload
-    with serial.Serial() as ser:
-        if __debug__:
-            print("Connecting to {} at {} baud, {} second timeout...".format(serialPort, serialBaudRate, serialTimeout))
-        ser.baudrate = serialBaudRate
-        ser.port = serialPort
-        ser.timeout = serialTimeout
-        ser.open()
+    if __debug__:
+        print("Connecting to {} at {} baud, {} second timeout...".format(serialPort, serialBaudRate, serialTimeout))
+    with serial.Serial(serialPort, serialBaudRate, serialTimeout) as ser:
         if __debug__:
             print("Writing bytes {} {} {} {} {}...".format(hex(address), hex(writeCommand.value), hex(data0), hex(data1), hex(expectedCrc)))
         # write() accepts bytes or bytearray type, so convert ints to bytes
